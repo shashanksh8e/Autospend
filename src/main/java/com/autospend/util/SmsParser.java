@@ -1,6 +1,8 @@
 package com.autospend.util;
 
 import com.autospend.model.Transaction;
+import com.autospend.service.GeminiService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.regex.Matcher;
@@ -8,6 +10,9 @@ import java.util.regex.Pattern;
 
 @Component
 public class SmsParser {
+
+    @Autowired
+    private GeminiService geminiService;
 
     // Pattern to extract amount
     private static final Pattern AMOUNT_PATTERN = Pattern.compile(
@@ -39,7 +44,7 @@ public class SmsParser {
             Pattern.CASE_INSENSITIVE
     );
 
-    // Pattern to extract contact name (sent to person)
+    // Pattern to extract contact name
     private static final Pattern CONTACT_PATTERN = Pattern.compile(
             "(?:sent to|paid to)\\s+([A-Za-z\\s]+?)(?:\\s+on|$)",
             Pattern.CASE_INSENSITIVE
@@ -60,7 +65,7 @@ public class SmsParser {
             transaction.setAmount(Double.parseDouble(amountStr));
         }
 
-        // Detect type — DEBIT or CREDIT
+        // Detect type
         if (DEBIT_PATTERN.matcher(sms).find()) {
             transaction.setType("DEBIT");
         } else if (CREDIT_PATTERN.matcher(sms).find()) {
@@ -69,29 +74,39 @@ public class SmsParser {
             transaction.setType("UNKNOWN");
         }
 
-        // Extract merchant name
+        // Extract merchant or contact
         Matcher vpaMatcher = VPA_PATTERN.matcher(sms);
         Matcher infoMatcher = INFO_PATTERN.matcher(sms);
         Matcher contactMatcher = CONTACT_PATTERN.matcher(sms);
 
         if (vpaMatcher.find()) {
-            // Extract from VPA like hariombakery@okaxis
             String vpa = vpaMatcher.group(1);
             transaction.setMerchantName(cleanMerchantName(vpa));
         } else if (infoMatcher.find()) {
-            // Extract from Info: DMRC METRO UPI
             transaction.setMerchantName(infoMatcher.group(1).trim());
         } else if (contactMatcher.find()) {
-            // It's a person payment
             transaction.setContactName(contactMatcher.group(1).trim());
             transaction.setMerchantName(null);
+        }
+
+        // AI Categorization
+        try {
+            String category = geminiService.categorizeTransaction(
+                    transaction.getMerchantName(),
+                    transaction.getContactName(),
+                    sms
+            );
+            transaction.setCategory(category);
+            transaction.setStatus("CATEGORIZED");
+        } catch (Exception e) {
+            System.out.println("AI categorization failed: " + e.getMessage());
+            transaction.setCategory("Uncategorized");
+            transaction.setStatus("UNCATEGORIZED");
         }
 
         return transaction;
     }
 
-    // Clean merchant name from VPA
-    // hariombakery → Hari Om Bakery (basic cleaning)
     private String cleanMerchantName(String vpa) {
         return vpa.replace(".", " ").trim();
     }
