@@ -340,6 +340,7 @@
 
         /* ── Transactions Section ── */
         .transactions-section {
+        width: 100%;
             background: var(--bg-card);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-lg);
@@ -354,11 +355,12 @@
         .transactions-section:hover { border-color: var(--glass-border-hover); }
 
         .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
 
         .section-header h3 {
             font-family: var(--font-display);
@@ -583,11 +585,15 @@
     </div>
 
     <!-- Transactions Table -->
-    <div class="transactions-section">
-        <div class="section-header">
-            <h3>📋 Recent Transactions</h3>
-            <select id="category-filter" onchange="filterByCategory()">
-                <option value="all">All Categories</option>
+    <div class="section-header" style="flex-direction: column; align-items: flex-start; gap: 1rem;">
+        <h3>📋 Recent Transactions</h3>  <div style="display:flex; gap:0.5rem; align-items:center;flex-wrap: wrap;">
+            <div style="display:flex; gap:0.25rem; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:0.25rem;">
+                <button onclick="filterByTime('all')" id="tab-all" style="background:rgba(0,245,255,0.15); border:1px solid rgba(0,245,255,0.3); color:#00f5ff; border-radius:8px; padding:0.35rem 0.85rem; font-size:0.75rem; cursor:pointer; font-family:var(--font-body); font-weight:500; transition:all 0.2s;">All</button>
+                <button onclick="filterByTime('today')" id="tab-today" style="background:transparent; border:1px solid transparent; color:rgba(240,244,255,0.5); border-radius:8px; padding:0.35rem 0.85rem; font-size:0.75rem; cursor:pointer; font-family:var(--font-body); font-weight:500; transition:all 0.2s;">Today</button>
+                <button onclick="filterByTime('week')" id="tab-week" style="background:transparent; border:1px solid transparent; color:rgba(240,244,255,0.5); border-radius:8px; padding:0.35rem 0.85rem; font-size:0.75rem; cursor:pointer; font-family:var(--font-body); font-weight:500; transition:all 0.2s;">Week</button>
+                <button onclick="filterByTime('month')" id="tab-month" style="background:transparent; border:1px solid transparent; color:rgba(240,244,255,0.5); border-radius:8px; padding:0.35rem 0.85rem; font-size:0.75rem; cursor:pointer; font-family:var(--font-body); font-weight:500; transition:all 0.2s;">Month</button>
+            </div>
+            <select id="category-filter" onchange="filterByCategory()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:0.5rem 1rem; color:var(--text-primary); font-family:var(--font-body); font-size:0.85rem; outline:none; cursor:pointer;">  <option value="all">All Categories</option>
                 <option value="Food">🍔 Food</option>
                 <option value="Travel">🚌 Travel</option>
                 <option value="Shopping">🛍 Shopping</option>
@@ -753,6 +759,53 @@
     <button class="btn-delete" onclick="deleteTransaction(${t.id})">🗑 Delete</button>
 </td> </tr>`).join('');
     }
+
+    function filterByTime(period) {
+    // Update tab styles
+    ['all', 'today', 'week', 'month'].forEach(t => {
+        const tab = document.getElementById(`tab-${t}`);
+        if (t === period) {
+            tab.style.background = 'rgba(0,245,255,0.15)';
+            tab.style.border = '1px solid rgba(0,245,255,0.3)';
+            tab.style.color = '#00f5ff';
+        } else {
+            tab.style.background = 'transparent';
+            tab.style.border = '1px solid transparent';
+            tab.style.color = 'rgba(240,244,255,0.5)';
+        }
+    });
+
+    const now = new Date();
+    let filtered = [...allTransactions];
+
+    if (period === 'today') {
+        filtered = allTransactions.filter(t => {
+            const date = new Date(t.transactionDate);
+            return date.toDateString() === now.toDateString();
+        });
+    } else if (period === 'week') {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        filtered = allTransactions.filter(t => {
+            return new Date(t.transactionDate) >= weekAgo;
+        });
+    } else if (period === 'month') {
+        filtered = allTransactions.filter(t => {
+            const date = new Date(t.transactionDate);
+            return date.getMonth() === now.getMonth() &&
+                   date.getFullYear() === now.getFullYear();
+        });
+    }
+
+    // Reset category filter
+    document.getElementById('category-filter').value = 'all';
+
+    // Update everything
+    updateSummaryCards(filtered);
+    renderCategoryChart(filtered);
+    renderIncomeExpenseChart(filtered);
+    renderTransactionsTable(filtered);
+}
 
     function filterByCategory() {
         const selected = document.getElementById('category-filter').value;
