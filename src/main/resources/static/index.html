@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoSpend — Smart Expense Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ── CSS Variables ── */
+        :root {
+            --bg-primary: #050810;
+            --bg-secondary: #0a0f1e;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --bg-card-hover: rgba(255, 255, 255, 0.07);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-hover: rgba(99, 179, 237, 0.3);
+            --neon-blue: #63b3ed;
+            --neon-cyan: #00f5ff;
+            --neon-green: #00ff94;
+            --neon-purple: #a855f7;
+            --neon-pink: #f472b6;
+            --neon-orange: #fb923c;
+            --text-primary: #f0f4ff;
+            --text-secondary: rgba(240, 244, 255, 0.55);
+            --text-tertiary: rgba(240, 244, 255, 0.3);
+            --income-color: #00ff94;
+            --expense-color: #f472b6;
+            --balance-color: #63b3ed;
+            --font-display: 'Syne', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 10%, rgba(99, 179, 237, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(168, 85, 247, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 60% at 50% 50%, rgba(0, 255, 148, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Navbar ── */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2.5rem;
+            height: 70px;
+            background: rgba(5, 8, 16, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            animation: slideDown 0.6s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .nav-brand {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-right { display: flex; align-items: center; gap: 1rem; }
+
+        .nav-links { display: flex; gap: 0.5rem; }
+
+        .nav-links a {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1.1rem;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+
+        .nav-links a:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+        .nav-links a.active { color: var(--neon-cyan); background: rgba(0,245,255,0.06); border: 1px solid rgba(0, 245, 255, 0.15); }
+
+        .nav-badge {
+            background: rgba(0, 245, 255, 0.1);
+            border: 1px solid rgba(0, 245, 255, 0.2);
+            color: var(--neon-cyan);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.3rem 0.75rem;
+            border-radius: 100px;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Container ── */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem 4rem;
+        }
+
+        /* ── Page Header ── */
+        .page-header {
+            margin-bottom: 2.5rem;
+            animation: fadeUp 0.6s ease 0.1s both;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .page-header p { font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.3rem; }
+
+        /* ── Summary Cards ── */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-card);
+            transition: all 0.3s ease;
+            animation: fadeUp 0.6s ease both;
+            cursor: default;
+        }
+
+        .card:hover { transform: translateY(-4px); border-color: var(--glass-border-hover); box-shadow: var(--shadow-card), 0 0 20px rgba(99, 179, 237, 0.1); }
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+        .card:nth-child(4) { animation-delay: 0.4s; }
+
+        .card-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .income-card .card-icon { background: rgba(0, 255, 148, 0.1); border: 1px solid rgba(0, 255, 148, 0.2); }
+        .expense-card .card-icon { background: rgba(244, 114, 182, 0.1); border: 1px solid rgba(244, 114, 182, 0.2); }
+        .balance-card .card-icon { background: rgba(99, 179, 237, 0.1); border: 1px solid rgba(99, 179, 237, 0.2); }
+        .transaction-card .card-icon { background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.2); }
+
+        .card-info h3 {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.4rem;
+        }
+
+        .card-info p {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .income-card .card-info p { color: var(--income-color); }
+        .expense-card .card-info p { color: var(--expense-color); }
+        .balance-card .card-info p { color: var(--balance-color); }
+        .transaction-card .card-info p { color: var(--neon-purple); }
+
+        /* ── Charts Row ── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-box {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-card);
+            animation: fadeUp 0.6s ease 0.5s both;
+            transition: border-color 0.3s ease;
+        }
+
+        .chart-box:hover { border-color: var(--glass-border-hover); }
+
+        .chart-box h3 {
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.2px;
+        }
+
+        .chart-box canvas { max-height: 240px; }
+
+        /* ── SMS Section ── */
+        .sms-section {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-card);
+            margin-bottom: 2rem;
+            animation: fadeUp 0.6s ease 0.6s both;
+            transition: border-color 0.3s ease;
+        }
+
+        .sms-section:hover { border-color: var(--glass-border-hover); }
+
+        .sms-section h3 {
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            letter-spacing: -0.2px;
+        }
+
+        .sms-input-row { display: flex; gap: 0.75rem; }
+
+        .sms-input-row input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1.25rem;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .sms-input-row input::placeholder { color: var(--text-tertiary); }
+
+        .sms-input-row input:focus {
+            border-color: rgba(0, 245, 255, 0.4);
+            background: rgba(0, 245, 255, 0.04);
+            box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.08);
+        }
+
+        .sms-input-row button {
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            color: var(--bg-primary);
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1.75rem;
+            font-family: var(--font-display);
+            font-size: 0.875rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+        }
+
+        .sms-input-row button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 245, 255, 0.3); }
+        .sms-input-row button:active { transform: translateY(0); }
+        .sms-input-row button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        #parse-result { margin-top: 1rem; font-size: 0.875rem; }
+
+        .parse-success {
+            background: rgba(0, 255, 148, 0.08);
+            border: 1px solid rgba(0, 255, 148, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1rem;
+            color: var(--neon-green);
+        }
+
+        .parse-error {
+            background: rgba(244, 114, 182, 0.08);
+            border: 1px solid rgba(244, 114, 182, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1rem;
+            color: var(--expense-color);
+        }
+
+        /* ── Transactions Section ── */
+        .transactions-section {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-card);
+            animation: fadeUp 0.6s ease 0.7s both;
+            transition: border-color 0.3s ease;
+        }
+
+        .transactions-section:hover { border-color: var(--glass-border-hover); }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header h3 {
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+        }
+
+        .section-header select {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .section-header select:focus { border-color: rgba(0, 245, 255, 0.4); }
+        .section-header select option { background: #0a0f1e; color: var(--text-primary); }
+
+        /* ── Table ── */
+        .transactions-table { width: 100%; border-collapse: collapse; }
+
+        .transactions-table thead tr { border-bottom: 1px solid var(--glass-border); }
+
+        .transactions-table th {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0 1rem 1rem 0;
+            text-align: left;
+        }
+
+        .transactions-table td {
+            padding: 1rem 1rem 1rem 0;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        .transactions-table tbody tr { transition: all 0.2s ease; }
+        .transactions-table tbody tr:hover td { color: var(--text-primary); background: rgba(255, 255, 255, 0.02); }
+        .transactions-table tbody tr:last-child td { border-bottom: none; }
+
+        /* ── Badges ── */
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-food { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }
+        .badge-travel { background: rgba(99,179,237,0.15); color: #63b3ed; border: 1px solid rgba(99,179,237,0.25); }
+        .badge-shopping { background: rgba(244,114,182,0.15); color: #f472b6; border: 1px solid rgba(244,114,182,0.25); }
+        .badge-friends { background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid rgba(168,85,247,0.25); }
+        .badge-salary { background: rgba(0,255,148,0.15); color: #00ff94; border: 1px solid rgba(0,255,148,0.25); }
+        .badge-investments { background: rgba(0,245,255,0.15); color: #00f5ff; border: 1px solid rgba(0,245,255,0.25); }
+        .badge-bills { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }
+        .badge-health { background: rgba(244,114,182,0.15); color: #f472b6; border: 1px solid rgba(244,114,182,0.25); }
+        .badge-education { background: rgba(99,179,237,0.15); color: #63b3ed; border: 1px solid rgba(99,179,237,0.25); }
+        .badge-entertainment { background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid rgba(168,85,247,0.25); }
+        .badge-groceries { background: rgba(0,255,148,0.15); color: #00ff94; border: 1px solid rgba(0,255,148,0.25); }
+        .badge-rent { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }
+        .badge-uncategorized { background: rgba(255,255,255,0.06); color: var(--text-tertiary); border: 1px solid rgba(255,255,255,0.1); }
+
+        .type-debit { color: var(--expense-color); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+        .type-credit { color: var(--income-color); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+
+        .amount-debit { font-family: var(--font-display); font-weight: 600; color: var(--expense-color); }
+        .amount-credit { font-family: var(--font-display); font-weight: 600; color: var(--income-color); }
+
+        .btn-delete {
+            background: rgba(244,114,182,0.1);
+            border: 1px solid rgba(244,114,182,0.2);
+            color: var(--neon-pink);
+            border-radius: var(--radius-sm);
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-body);
+        }
+
+        .btn-delete:hover { background: rgba(244,114,182,0.2); transform: scale(1.05); }
+
+        .empty-state { text-align: center; padding: 3rem; color: var(--text-tertiary); font-size: 0.9rem; }
+        .empty-state span { display: block; font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .loading { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 0.875rem; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        @media (max-width: 1024px) {
+            .summary-cards { grid-template-columns: repeat(2, 1fr); }
+            .charts-row { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 640px) {
+            .navbar { padding: 0 1rem; }
+            .container { padding: 1.5rem 1rem 3rem; }
+            .summary-cards { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+            .sms-input-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="nav-brand">💰 AutoSpend</div>
+    <div class="nav-right">
+        <div class="nav-links">
+            <a href="#" class="active">Dashboard</a>
+            <a href="#">Transactions</a>
+            <a href="#">Analytics</a>
+        </div>
+        <span class="nav-badge">AI Powered</span>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>Good evening, Shashank 👋</h1>
+        <p>Here's your financial overview — all powered by AI</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="card income-card">
+            <div class="card-icon">📈</div>
+            <div class="card-info">
+                <h3>Total Income</h3>
+                <p id="total-income">₹0</p>
+            </div>
+        </div>
+        <div class="card expense-card">
+            <div class="card-icon">📉</div>
+            <div class="card-info">
+                <h3>Total Expenses</h3>
+                <p id="total-expense">₹0</p>
+            </div>
+        </div>
+        <div class="card balance-card">
+            <div class="card-icon">💳</div>
+            <div class="card-info">
+                <h3>Net Balance</h3>
+                <p id="balance">₹0</p>
+            </div>
+        </div>
+        <div class="card transaction-card">
+            <div class="card-icon">🔄</div>
+            <div class="card-info">
+                <h3>Transactions</h3>
+                <p id="total-transactions">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+        <div class="chart-box">
+            <h3>💸 Spending by Category</h3>
+            <canvas id="categoryChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>⚖️ Income vs Expense</h3>
+            <canvas id="incomeExpenseChart"></canvas>
+        </div>
+    </div>
+
+    <!-- SMS Parser -->
+    <div class="sms-section">
+        <h3>📱 Parse UPI SMS — Zero Manual Entry</h3>
+        <div class="sms-input-row">
+            <input type="text" id="sms-input"
+                   placeholder="Paste your UPI SMS here... e.g. Rs.450 debited from A/c XX1234 to VPA hariombakery@okaxis" />
+            <button onclick="parseSms()">⚡ Parse & Save</button>
+        </div>
+        <div id="parse-result"></div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="transactions-section">
+        <div class="section-header">
+            <h3>📋 Recent Transactions</h3>
+            <select id="category-filter" onchange="filterByCategory()">
+                <option value="all">All Categories</option>
+                <option value="Food">🍔 Food</option>
+                <option value="Travel">🚌 Travel</option>
+                <option value="Shopping">🛍 Shopping</option>
+                <option value="Bills">💡 Bills</option>
+                <option value="Friends">👫 Friends</option>
+                <option value="Investments">📈 Investments</option>
+                <option value="Health">💊 Health</option>
+                <option value="Education">📚 Education</option>
+                <option value="Entertainment">🎬 Entertainment</option>
+                <option value="Groceries">🛒 Groceries</option>
+                <option value="Rent">🏠 Rent</option>
+                <option value="Salary">💰 Salary</option>
+                <option value="Uncategorized">❓ Uncategorized</option>
+            </select>
+        </div>
+        <table class="transactions-table">
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Merchant / Contact</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="transactions-body">
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    const USER_ID = 1;
+    const API_BASE = 'http://localhost:8081/api';
+    let allTransactions = [];
+    let categoryChart = null;
+    let incomeExpenseChart = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadTransactions();
+        updateGreeting();
+    });
+
+    function updateGreeting() {
+        const hour = new Date().getHours();
+        const greetings = {
+            morning: 'Good morning',
+            afternoon: 'Good afternoon',
+            evening: 'Good evening',
+            night: 'Good night'
+        };
+        const g = hour < 12 ? greetings.morning : hour < 17 ? greetings.afternoon : hour < 21 ? greetings.evening : greetings.night;
+        document.querySelector('.page-header h1').textContent = `${g}, Shashank 👋`;
+    }
+
+    async function loadTransactions() {
+        try {
+            showTableLoading();
+            const res = await fetch(`${API_BASE}/transactions/user/${USER_ID}`);
+            allTransactions = await res.json();
+            renderDashboard(allTransactions);
+        } catch (err) {
+            showTableError();
+        }
+    }
+
+    function renderDashboard(transactions) {
+        updateSummaryCards(transactions);
+        renderCategoryChart(transactions);
+        renderIncomeExpenseChart(transactions);
+        renderTransactionsTable(transactions);
+    }
+
+    function updateSummaryCards(transactions) {
+        const totalIncome = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
+        const totalExpense = transactions.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0);
+        const balance = totalIncome - totalExpense;
+        animateCounter('total-income', totalIncome, '₹');
+        animateCounter('total-expense', totalExpense, '₹');
+        animateCounter('balance', balance, '₹');
+        document.getElementById('total-transactions').textContent = transactions.length;
+    }
+
+    function animateCounter(id, target, prefix = '') {
+        const el = document.getElementById(id);
+        const duration = 1000;
+        const start = performance.now();
+        function update(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = prefix + formatAmount(target * eased);
+            if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+    }
+
+    function renderCategoryChart(transactions) {
+        const debits = transactions.filter(t => t.type === 'DEBIT');
+        const categoryMap = {};
+        debits.forEach(t => { const c = t.category || 'Uncategorized'; categoryMap[c] = (categoryMap[c] || 0) + t.amount; });
+        const labels = Object.keys(categoryMap);
+        const data = Object.values(categoryMap);
+        const colors = ['#00f5ff','#00ff94','#a855f7','#f472b6','#fb923c','#63b3ed','#34d399','#fbbf24','#f87171','#818cf8','#e879f9','#2dd4bf'];
+        if (categoryChart) categoryChart.destroy();
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        categoryChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{ data, backgroundColor: colors.slice(0, labels.length).map(c => c + '33'), borderColor: colors.slice(0, labels.length), borderWidth: 2, hoverOffset: 8 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: 'rgba(240,244,255,0.6)', font: { family: 'DM Sans', size: 11 }, padding: 16, usePointStyle: true, pointStyleWidth: 8 } },
+                    tooltip: { backgroundColor: 'rgba(10,15,30,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#f0f4ff', bodyColor: 'rgba(240,244,255,0.7)', callbacks: { label: ctx => ` ₹${formatAmount(ctx.raw)}` } }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+
+    function renderIncomeExpenseChart(transactions) {
+        const income = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
+        const expense = transactions.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0);
+        if (incomeExpenseChart) incomeExpenseChart.destroy();
+        const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+        incomeExpenseChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Income', 'Expense'],
+                datasets: [{ data: [income, expense], backgroundColor: ['rgba(0,255,148,0.15)', 'rgba(244,114,182,0.15)'], borderColor: ['#00ff94', '#f472b6'], borderWidth: 2, borderRadius: 10, borderSkipped: false }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,15,30,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#f0f4ff', bodyColor: 'rgba(240,244,255,0.7)', callbacks: { label: ctx => ` ₹${formatAmount(ctx.raw)}` } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: 'rgba(240,244,255,0.5)', font: { family: 'DM Sans' } }, border: { display: false } },
+                    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(240,244,255,0.5)', font: { family: 'DM Sans' }, callback: v => '₹' + formatAmount(v) }, border: { display: false } }
+                }
+            }
+        });
+    }
+
+    function renderTransactionsTable(transactions) {
+        const tbody = document.getElementById('transactions-body');
+        if (!transactions || transactions.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span>💸</span>No transactions yet. Parse a UPI SMS above to get started!</div></td></tr>`;
+            return;
+        }
+        const sorted = [...transactions].sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate));
+        tbody.innerHTML = sorted.map(t => `
+            <tr>
+                <td>${formatDate(t.transactionDate)}</td>
+                <td style="color: var(--text-primary); font-weight: 500;">${t.merchantName || t.contactName || '—'}</td>
+                <td><span class="category-badge badge-${(t.category || 'uncategorized').toLowerCase()}">${getCategoryEmoji(t.category)} ${t.category || 'Uncategorized'}</span></td>
+                <td><span class="type-${t.type === 'DEBIT' ? 'debit' : 'credit'}">${t.type === 'DEBIT' ? '↓ DEBIT' : '↑ CREDIT'}</span></td>
+                <td><span class="amount-${t.type === 'DEBIT' ? 'debit' : 'credit'}">${t.type === 'DEBIT' ? '-' : '+'}₹${formatAmount(t.amount)}</span></td>
+                <td><button class="btn-delete" onclick="deleteTransaction(${t.id})">🗑 Delete</button></td>
+            </tr>`).join('');
+    }
+
+    function filterByCategory() {
+        const selected = document.getElementById('category-filter').value;
+        renderTransactionsTable(selected === 'all' ? allTransactions : allTransactions.filter(t => t.category === selected));
+    }
+
+    async function parseSms() {
+        const smsInput = document.getElementById('sms-input');
+        const resultDiv = document.getElementById('parse-result');
+        const sms = smsInput.value.trim();
+        if (!sms) { resultDiv.innerHTML = `<div class="parse-error">⚠️ Please enter an SMS message!</div>`; return; }
+        const btn = document.querySelector('.sms-input-row button');
+        btn.textContent = '⏳ Parsing...';
+        btn.disabled = true;
+        try {
+            const res = await fetch(`${API_BASE}/sms/parse?sms=${encodeURIComponent(sms)}&userId=${USER_ID}`, { method: 'POST' });
+            const t = await res.json();
+            resultDiv.innerHTML = `<div class="parse-success">✅ Saved! <strong>${t.type}</strong> of <strong>₹${formatAmount(t.amount)}</strong> — Category: <strong>${t.category}</strong>${t.merchantName ? ` — Merchant: <strong>${t.merchantName}</strong>` : ''}${t.contactName ? ` — Contact: <strong>${t.contactName}</strong>` : ''}</div>`;
+            smsInput.value = '';
+            await loadTransactions();
+        } catch (err) {
+            resultDiv.innerHTML = `<div class="parse-error">❌ Failed to parse SMS. Is the backend running on port 8081?</div>`;
+        } finally {
+            btn.textContent = '⚡ Parse & Save';
+            btn.disabled = false;
+        }
+    }
+
+    async function deleteTransaction(id) {
+        if (!confirm('Delete this transaction?')) return;
+        try {
+            await fetch(`${API_BASE}/transactions/${id}`, { method: 'DELETE' });
+            await loadTransactions();
+        } catch (err) { alert('Failed to delete!'); }
+    }
+
+    function formatAmount(amount) {
+        return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function getCategoryEmoji(category) {
+        const map = { 'Food':'🍔','Travel':'🚌','Shopping':'🛍','Bills':'💡','Friends':'👫','Investments':'📈','Health':'💊','Education':'📚','Entertainment':'🎬','Groceries':'🛒','Rent':'🏠','Salary':'💰','Uncategorized':'❓' };
+        return map[category] || '💳';
+    }
+
+    function showTableLoading() {
+        document.getElementById('transactions-body').innerHTML = `<tr><td colspan="6"><div class="loading" style="animation: pulse 1.5s infinite;">Loading transactions...</div></td></tr>`;
+    }
+
+    function showTableError() {
+        document.getElementById('transactions-body').innerHTML = `<tr><td colspan="6"><div class="empty-state"><span>⚠️</span>Could not load. Is backend running on port 8081?</div></td></tr>`;
+    }
+</script>
+</body>
+</html>
