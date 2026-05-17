@@ -453,6 +453,22 @@
             transition: all 0.2s ease;
             font-family: var(--font-body);
         }
+        .btn-edit {
+    background: rgba(99,179,237,0.1);
+    border: 1px solid rgba(99,179,237,0.2);
+    color: var(--neon-blue);
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-body);
+}
+
+.btn-edit:hover {
+    background: rgba(99,179,237,0.2);
+    transform: scale(1.05);
+}
 
         .btn-delete:hover { background: rgba(244,114,182,0.2); transform: scale(1.05); }
 
@@ -595,7 +611,7 @@
                 <th>Category</th>
                 <th>Type</th>
                 <th>Amount</th>
-                <th>Action</th>
+                <th>Actions</th>
             </tr>
             </thead>
             <tbody id="transactions-body">
@@ -732,8 +748,10 @@
                 <td><span class="category-badge badge-${(t.category || 'uncategorized').toLowerCase()}">${getCategoryEmoji(t.category)} ${t.category || 'Uncategorized'}</span></td>
                 <td><span class="type-${t.type === 'DEBIT' ? 'debit' : 'credit'}">${t.type === 'DEBIT' ? '↓ DEBIT' : '↑ CREDIT'}</span></td>
                 <td><span class="amount-${t.type === 'DEBIT' ? 'debit' : 'credit'}">${t.type === 'DEBIT' ? '-' : '+'}₹${formatAmount(t.amount)}</span></td>
-                <td><button class="btn-delete" onclick="deleteTransaction(${t.id})">🗑 Delete</button></td>
-            </tr>`).join('');
+                <td style="display:flex; gap:0.5rem;">
+    <button class="btn-edit" onclick="editCategory(${t.id}, '${t.category}')">✏️ Edit</button>
+    <button class="btn-delete" onclick="deleteTransaction(${t.id})">🗑 Delete</button>
+</td> </tr>`).join('');
     }
 
     function filterByCategory() {
@@ -762,6 +780,119 @@
             btn.disabled = false;
         }
     }
+    function editCategory(id, currentCategory) {
+    // Remove existing modal if any
+    const existing = document.getElementById('category-modal');
+    if (existing) existing.remove();
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'category-modal';
+    modal.style.cssText = `
+        position: fixed; inset: 0; z-index: 999;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(8px);
+        animation: fadeUp 0.2s ease;
+    `;
+
+    modal.innerHTML = `
+        <div style="
+            background: #0a0f1e;
+            border: 1px solid rgba(99,179,237,0.3);
+            border-radius: 24px;
+            padding: 2rem;
+            width: 360px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(99,179,237,0.1);
+        ">
+            <h3 style="
+                font-family: var(--font-display);
+                font-size: 1.1rem;
+                font-weight: 700;
+                margin-bottom: 0.5rem;
+                color: var(--text-primary);
+            ">✏️ Edit Category</h3>
+            <p style="font-size:0.8rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                Current: <strong style="color: var(--neon-cyan);">${currentCategory}</strong>
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1.5rem;">
+                ${[
+                    ['Food','🍔','#fb923c'],
+                    ['Travel','🚌','#63b3ed'],
+                    ['Shopping','🛍','#f472b6'],
+                    ['Bills','💡','#fb923c'],
+                    ['Friends','👫','#a855f7'],
+                    ['Investments','📈','#00f5ff'],
+                    ['Health','💊','#f472b6'],
+                    ['Education','📚','#63b3ed'],
+                    ['Entertainment','🎬','#a855f7'],
+                    ['Groceries','🛒','#00ff94'],
+                    ['Rent','🏠','#fb923c'],
+                    ['Salary','💰','#00ff94'],
+                    ['Uncategorized','❓','rgba(255,255,255,0.3)']
+                ].map(([cat, emoji, color]) => `
+                    <button onclick="selectCategory(${id}, '${cat}')" style="
+                        background: rgba(255,255,255,0.04);
+                        border: 1px solid ${cat === currentCategory ? color : 'rgba(255,255,255,0.08)'};
+                        border-radius: 12px;
+                        padding: 0.6rem 0.75rem;
+                        color: ${cat === currentCategory ? color : 'rgba(240,244,255,0.6)'};
+                        font-size: 0.8rem;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        text-align: left;
+                        font-family: var(--font-body);
+                        display: flex;
+                        align-items: center;
+                        gap: 0.4rem;
+                    "
+                    onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.borderColor='${color}'; this.style.color='${color}'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='${cat === currentCategory ? color : 'rgba(255,255,255,0.08)'}'; this.style.color='${cat === currentCategory ? color : 'rgba(240,244,255,0.6)'}'">
+                        ${emoji} ${cat}
+                    </button>
+                `).join('')}
+            </div>
+            <button onclick="document.getElementById('category-modal').remove()" style="
+                width: 100%;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 12px;
+                padding: 0.7rem;
+                color: var(--text-secondary);
+                font-size: 0.875rem;
+                cursor: pointer;
+                font-family: var(--font-body);
+                transition: all 0.2s ease;
+            "
+            onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                Cancel
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+async function selectCategory(id, category) {
+    document.getElementById('category-modal').remove();
+    try {
+        const res = await fetch(
+            `${API_BASE}/transactions/${id}/category?category=${category}`,
+            { method: 'PUT' }
+        );
+        if (res.ok) {
+            await loadTransactions();
+        }
+    } catch (err) {
+        alert('Failed to update category!');
+    }
+}
 
     async function deleteTransaction(id) {
         if (!confirm('Delete this transaction?')) return;
