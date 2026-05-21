@@ -592,6 +592,18 @@
                 <button onclick="filterByTime('today')" id="tab-today" style="background:transparent; border:1px solid transparent; color:rgba(240,244,255,0.5); border-radius:8px; padding:0.35rem 0.85rem; font-size:0.75rem; cursor:pointer; font-family:var(--font-body); font-weight:500; transition:all 0.2s;">Today</button>
                 <button onclick="filterByTime('week')" id="tab-week" style="background:transparent; border:1px solid transparent; color:rgba(240,244,255,0.5); border-radius:8px; padding:0.35rem 0.85rem; font-size:0.75rem; cursor:pointer; font-family:var(--font-body); font-weight:500; transition:all 0.2s;">Week</button>
                 <button onclick="filterByTime('month')" id="tab-month" style="background:transparent; border:1px solid transparent; color:rgba(240,244,255,0.5); border-radius:8px; padding:0.35rem 0.85rem; font-size:0.75rem; cursor:pointer; font-family:var(--font-body); font-weight:500; transition:all 0.2s;">Month</button>
+                <button onclick="exportCsv()" style="
+    background: rgba(0,255,148,0.1);
+    border: 1px solid rgba(0,255,148,0.3);
+    color: #00ff94;
+    border-radius: 10px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 500;
+    transition: all 0.2s;
+">📥 Export CSV</button>
             </div>
             <select id="category-filter" onchange="filterByCategory()" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:0.5rem 1rem; color:var(--text-primary); font-family:var(--font-body); font-size:0.85rem; outline:none; cursor:pointer;">  <option value="all">All Categories</option>
                 <option value="Food">🍔 Food</option>
@@ -806,7 +818,9 @@
     renderIncomeExpenseChart(filtered);
     renderTransactionsTable(filtered);
 }
-
+function exportCsv() {
+    window.open(`${API_BASE}/transactions/user/1/export/csv`, '_blank');
+}
     function filterByCategory() {
         const selected = document.getElementById('category-filter').value;
         renderTransactionsTable(selected === 'all' ? allTransactions : allTransactions.filter(t => t.category === selected));

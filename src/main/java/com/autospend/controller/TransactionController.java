@@ -76,4 +76,14 @@ public class TransactionController {
         transactionService.deleteTransaction(id);
         return ResponseEntity.ok("Transaction deleted successfully!");
     }
+    // Export to CSV
+    
+    @GetMapping("/user/{userId}/export/csv")
+    public ResponseEntity<String> exportToCsv(@PathVariable Long userId) {
+        String csv = transactionService.exportToCsv(userId);
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv")
+                .header("Content-Disposition", "attachment; filename=autospend_transactions.csv")
+                .body(csv);
+    }
 }

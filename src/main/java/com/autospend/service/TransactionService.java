@@ -62,4 +62,23 @@ public class TransactionService {
     public void deleteTransaction(Long id) {
         transactionRepository.deleteById(id);
     }
+    // Export transactions to CSV
+    public String exportToCsv(Long userId) {
+        List<Transaction> transactions = transactionRepository.findByUserId(userId);
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Date,Merchant,Contact,Category,Type,Amount,Status\n");
+
+        for (Transaction t : transactions) {
+            csv.append(t.getTransactionDate()).append(",");
+            csv.append(t.getMerchantName() != null ? t.getMerchantName() : "").append(",");
+            csv.append(t.getContactName() != null ? t.getContactName() : "").append(",");
+            csv.append(t.getCategory()).append(",");
+            csv.append(t.getType()).append(",");
+            csv.append(t.getAmount()).append(",");
+            csv.append(t.getStatus()).append("\n");
+        }
+
+        return csv.toString();
+    }
 }
