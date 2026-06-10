@@ -640,8 +640,14 @@
 </div>
 
 <script>
-    const USER_ID = 1;
+    const userId = localStorage.getItem('userId');
     const API_BASE = 'http://localhost:8081/api';
+    // Check login
+
+const userName = localStorage.getItem('userName');
+if (!userId) {
+    window.location.href = 'login.html';
+}
     let allTransactions = [];
     let categoryChart = null;
     let incomeExpenseChart = null;
@@ -666,7 +672,7 @@
     async function loadTransactions() {
         try {
             showTableLoading();
-            const res = await fetch(`${API_BASE}/transactions/user/${USER_ID}`);
+            const res = await fetch(`${API_BASE}/transactions/user/${userId}`);
             allTransactions = await res.json();
             renderDashboard(allTransactions);
         } catch (err) {
@@ -819,7 +825,7 @@
     renderTransactionsTable(filtered);
 }
 function exportCsv() {
-    window.open(`${API_BASE}/transactions/user/1/export/csv`, '_blank');
+    window.open(`${API_BASE}/transactions/user/${userId}/export/csv`, '_blank');
 }
     function filterByCategory() {
         const selected = document.getElementById('category-filter').value;
@@ -835,7 +841,7 @@ function exportCsv() {
         btn.textContent = '⏳ Parsing...';
         btn.disabled = true;
         try {
-            const res = await fetch(`${API_BASE}/sms/parse?sms=${encodeURIComponent(sms)}&userId=${USER_ID}`, { method: 'POST' });
+            const res = await fetch(`${API_BASE}/sms/parse?sms=${encodeURIComponent(sms)}&userId=${userId}`, { method: 'POST' });
             const t = await res.json();
             resultDiv.innerHTML = `<div class="parse-success">✅ Saved! <strong>${t.type}</strong> of <strong>₹${formatAmount(t.amount)}</strong> — Category: <strong>${t.category}</strong>${t.merchantName ? ` — Merchant: <strong>${t.merchantName}</strong>` : ''}${t.contactName ? ` — Contact: <strong>${t.contactName}</strong>` : ''}</div>`;
             smsInput.value = '';

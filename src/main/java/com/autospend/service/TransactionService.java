@@ -14,15 +14,28 @@ public class TransactionService {
     @Autowired
     private TransactionRepository transactionRepository;
 
+    @Autowired
+    private GeminiService geminiService;
     // Add new transaction
     public Transaction addTransaction(Transaction transaction) {
         transaction.setCreatedAt(LocalDateTime.now());
         if(transaction.getTransactionDate() == null) {
             transaction.setTransactionDate(LocalDateTime.now());
         }
-        if(transaction.getStatus() == null) {
+
+        String category = geminiService.categorizeTransaction(
+                transaction.getMerchantName(),
+                transaction.getContactName(),
+                transaction.getRawSms()
+        );
+        transaction.setCategory(category);
+
+        if(category.equals("Uncategorized")) {
             transaction.setStatus("UNCATEGORIZED");
+        } else {
+            transaction.setStatus("CATEGORIZED");
         }
+
         return transactionRepository.save(transaction);
     }
 
