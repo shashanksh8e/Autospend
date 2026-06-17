@@ -516,6 +516,8 @@
             <a href="#" class="active">Dashboard</a>
             <a href="#" onclick="document.getElementById('transactions-section').scrollIntoView({behavior:'smooth'}); return false;">Transactions</a>
             <a href="#">Analytics</a>
+
+            <a href="#" onclick="logout()">Logout</a>
         </div>
         <span class="nav-badge">AI Powered</span>
     </div>
@@ -666,7 +668,7 @@ if (!userId) {
             night: 'Good night'
         };
         const g = hour < 12 ? greetings.morning : hour < 17 ? greetings.afternoon : hour < 21 ? greetings.evening : greetings.night;
-        document.querySelector('.page-header h1').textContent = `${g}, Shashank 👋`;
+        document.querySelector('.page-header h1').textContent = `${g}, ${userName} 👋`;
     }
 
     async function loadTransactions() {
@@ -996,6 +998,10 @@ async function selectCategory(id, category) {
     function showTableError() {
         document.getElementById('transactions-body').innerHTML = `<tr><td colspan="6"><div class="empty-state"><span>⚠️</span>Could not load. Is backend running on port 8081?</div></td></tr>`;
     }
+    function logout() {
+    localStorage.clear();
+    window.location.href = 'login.html';
+}
 </script>
 </body>
 </html>
