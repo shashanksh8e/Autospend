@@ -29,7 +29,7 @@
 ![Dashboard](screenshots/dashboard.png)
 
 ### Transactions
-![Transactions](screenshots/login.png)
+![Transactions](screenshots/transactins.png)
 
 ### Login / Register
 ![Login](screenshots/login.png)
