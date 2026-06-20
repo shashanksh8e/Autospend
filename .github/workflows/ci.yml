@@ -21,7 +21,9 @@ jobs:
           distribution: 'temurin'
 
       - name: Build with Maven
-        run: ./mvnw clean install -DskipTests
+        run: |
+          chmod +x mvnw
+          ./mvnw clean install -DskipTests
 
       - name: Build successful
         run: echo "✅ AutoSpend build successful!"
